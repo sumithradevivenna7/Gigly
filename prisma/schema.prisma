@@ -1,0 +1,264 @@
+// Prisma Schema for Gigly Freelance Marketplace
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------
+// Enums
+// ----------------------------------------------------
+
+enum UserRole {
+  CLIENT
+  FREELANCER
+  BOTH
+}
+
+enum ActiveRole {
+  CLIENT
+  FREELANCER
+}
+
+enum SkillProficiency {
+  BEGINNER
+  INTERMEDIATE
+  EXPERT
+}
+
+enum BudgetType {
+  FIXED
+  HOURLY
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ProposalStatus {
+  PENDING
+  SHORTLISTED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ContractStatus {
+  ACTIVE
+  IN_REVIEW
+  COMPLETED
+  DISPUTED
+  CANCELLED
+}
+
+enum EscrowStatus {
+  UNFUNDED
+  HELD_IN_ESCROW
+  RELEASED
+  REFUNDED
+}
+
+enum NotificationType {
+  PROPOSAL_RECEIVED
+  PROPOSAL_ACCEPTED
+  CONTRACT_STARTED
+  MESSAGE_RECEIVED
+  ESCROW_FUNDED
+  PAYMENT_RELEASED
+  REVIEW_RECEIVED
+}
+
+// ----------------------------------------------------
+// Core Models
+// ----------------------------------------------------
+
+model User {
+  id                   String        @id @default(cuid())
+  email                String        @unique
+  name                 String
+  passwordHash         String?
+  avatar               String?
+  bio                  String?       @db.Text
+  role                 UserRole      @default(BOTH)
+  activeRole           ActiveRole    @default(FREELANCER)
+  title                String?       // E.g. "Full-Stack Next.js & AI Engineer"
+  hourlyRate           Float?        // Default hourly bid
+  location             String?
+  companyName          String?       // For client profile
+  companyWebsite       String?
+  companyDescription   String?       @db.Text
+  totalEarnings        Float         @default(0)
+  totalSpent           Float         @default(0)
+  rating               Float         @default(5.0)
+  reviewCount          Int           @default(0)
+  stripeAccountId      String?       // Stripe Connect ID
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  // Relations
+  skills               UserSkill[]
+  postedJobs           Job[]
+  proposals            Proposal[]
+  clientContracts      Contract[]    @relation("ClientContracts")
+  freelancerContracts  Contract[]    @relation("FreelancerContracts")
+  sentMessages         Message[]     @relation("SentMessages")
+  receivedMessages     Message[]     @relation("ReceivedMessages")
+  givenReviews         Review[]      @relation("GivenReviews")
+  receivedReviews      Review[]      @relation("ReceivedReviews")
+  notifications        Notification[]
+
+  @@index([email])
+}
+
+model Skill {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  slug        String      @unique
+  category    String?
+  userSkills  UserSkill[]
+  createdAt   DateTime    @default(now())
+}
+
+model UserSkill {
+  id              String            @id @default(cuid())
+  userId          String
+  skillId         String
+  proficiency     SkillProficiency  @default(INTERMEDIATE)
+  yearsExperience Int               @default(1)
+  createdAt       DateTime          @default(now())
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill           Skill             @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+}
+
+model Job {
+  id                String          @id @default(cuid())
+  clientId          String
+  title             String
+  description       String          @db.Text
+  category          String
+  budgetType        BudgetType      @default(FIXED)
+  budgetAmount      Float?          // For fixed-price jobs
+  budgetMin         Float?          // For hourly range min
+  budgetMax         Float?          // For hourly range max
+  estimatedDuration String?         // E.g. "Less than 1 month", "1 to 3 months"
+  deadline          DateTime?
+  requiredSkills    String[]        // Stored skill names/tags
+  status            JobStatus       @default(OPEN)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  client            User            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  proposals         Proposal[]
+  contract          Contract?
+
+  @@index([clientId])
+  @@index([status])
+  @@index([category])
+}
+
+model Proposal {
+  id                String          @id @default(cuid())
+  jobId             String
+  freelancerId      String
+  coverLetter       String          @db.Text
+  bidAmount         Float
+  estimatedDuration String          // E.g. "2 weeks"
+  status            ProposalStatus  @default(PENDING)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  job               Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  freelancer        User            @relation(fields: [freelancerId], references: [id], onDelete: Cascade)
+  contract          Contract?
+
+  @@unique([jobId, freelancerId])
+  @@index([jobId])
+  @@index([freelancerId])
+}
+
+model Contract {
+  id                    String          @id @default(cuid())
+  jobId                 String          @unique
+  proposalId            String          @unique
+  clientId              String
+  freelancerId          String
+  agreedAmount          Float
+  status                ContractStatus  @default(ACTIVE)
+  escrowStatus          EscrowStatus    @default(HELD_IN_ESCROW)
+  stripePaymentIntentId String?
+  startDate             DateTime        @default(now())
+  completedDate         DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  job                   Job             @relation(fields: [jobId], references: [id])
+  proposal              Proposal        @relation(fields: [proposalId], references: [id])
+  client                User            @relation("ClientContracts", fields: [clientId], references: [id])
+  freelancer            User            @relation("FreelancerContracts", fields: [freelancerId], references: [id])
+  messages              Message[]
+  reviews               Review[]
+
+  @@index([clientId])
+  @@index([freelancerId])
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  contractId  String
+  senderId    String
+  receiverId  String
+  content     String    @db.Text
+  attachments String[]  @default([])
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  contract    Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  receiver    User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  @@index([contractId])
+  @@index([senderId, receiverId])
+}
+
+model Review {
+  id          String    @id @default(cuid())
+  contractId  String
+  reviewerId  String
+  revieweeId  String
+  rating      Float     // 1.0 to 5.0
+  feedback    String    @db.Text
+  createdAt   DateTime  @default(now())
+
+  contract    Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  reviewer    User      @relation("GivenReviews", fields: [reviewerId], references: [id])
+  reviewee    User      @relation("ReceivedReviews", fields: [revieweeId], references: [id])
+
+  @@unique([contractId, reviewerId])
+  @@index([reviewerId])
+  @@index([revieweeId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
