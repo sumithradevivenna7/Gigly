@@ -4,6 +4,11 @@ import { Providers } from '@/components/Providers';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 
+// Force every page in this app to be server-rendered on demand.
+// This prevents NextAuth from being called with an empty NEXTAUTH_URL
+// during Vercel's static prerender phase.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Gigly — Proposal-Based Freelance Marketplace & Escrow Platform',
   description:

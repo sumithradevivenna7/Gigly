@@ -5,6 +5,15 @@ import { prisma } from '@/lib/prisma';
 import { DEMO_USERS } from '@/lib/mock-data';
 import { UserRole, ActiveRole } from '@/types';
 
+if (!process.env.NEXTAUTH_SECRET) {
+  process.env.NEXTAUTH_SECRET = 'gigly_super_secure_secret_key_change_in_production_32chars!';
+}
+if (!process.env.NEXTAUTH_URL) {
+  process.env.NEXTAUTH_URL = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'http://localhost:3000';
+}
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
