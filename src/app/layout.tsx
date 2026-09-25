@@ -3,6 +3,7 @@ import './globals.css';
 import { Providers } from '@/components/Providers';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { FloatingThemeDock } from '@/components/FloatingThemeDock';
 
 // Force every page in this app to be server-rendered on demand.
 // This prevents NextAuth from being called with an empty NEXTAUTH_URL
@@ -37,6 +38,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <FloatingThemeDock />
         </Providers>
       </body>
     </html>

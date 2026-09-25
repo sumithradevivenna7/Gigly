@@ -76,10 +76,14 @@ function RoleProviderInner({ children }: { children: React.ReactNode }) {
   );
 }
 
+import { ThemeProvider } from './ThemeContext';
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <RoleProviderInner>{children}</RoleProviderInner>
+      <ThemeProvider>
+        <RoleProviderInner>{children}</RoleProviderInner>
+      </ThemeProvider>
     </SessionProvider>
   );
 }

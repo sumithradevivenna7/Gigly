@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { useActiveRole } from './Providers';
 import { RoleSwitcher } from './RoleSwitcher';
+import { ThemeSwitcher } from './ThemeSwitcher';
 import {
   Sparkles,
   PlusCircle,
@@ -92,10 +93,10 @@ export function Navbar() {
 
         {/* Center / Right: Role Switcher & Action CTA */}
         <div className="flex items-center gap-3">
-          {/* Prominent Role Switcher */}
+          {/* Prominent Role Switcher & Theme Switcher */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-surface-400 hidden xl:inline">Mode:</span>
             <RoleSwitcher />
+            <ThemeSwitcher />
           </div>
 
           {/* Action button based on active role */}
